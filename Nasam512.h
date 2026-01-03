@@ -230,35 +230,6 @@ namespace RNG {
 			}
 		}
 
-		// Advance the state by an arbitrary 512-bit number of increments:
-		//   state += step × inc_vector  (with full circular carry semantics)
-		//
-		// Enables creation of equally spaced parallel streams with any desired spacing
-		// up to 2^512 - 1. Useful for massive-scale reproducible parallelism.
-		//
-		// Note: Much slower than discard() — use only for stream initialization/splitting.
-		//
-		// Conceptually, this would allow someone to create 2^256 independent streams of
-		// non-overlapping length 2^256 blocks each. Why anyone would need that many streams
-		// is another question . . .
-		void big_jump(const uint64_t step[8]) noexcept {
-			uint64_t temp[8];
-			std::memcpy(temp, state, sizeof(temp));  // start from current state
-
-			for (int i = 0; i < 8; ++i) {
-				if (step[i] == 0) continue;
-
-				uint64_t lo, hi;
-				for (int j = 0; j < 8; ++j) {
-					lo = _umul128(inc[j], step[i], &hi);
-					add_circular_carry(temp, lo, (i + j) % 8);
-					if (hi)
-						add_circular_carry(temp, hi, (i + j + 1) % 8);
-				}
-			}
-
-			std::memcpy(state, temp, sizeof(state));
-		}
 
 		void refill_buffer() noexcept {
 			increment_state();
@@ -422,7 +393,37 @@ namespace RNG {
 #endif
 		}
 
-	public:	// Compatibility
+		// Advance the state by an arbitrary 512-bit number of increments:
+		//   state += step × inc_vector  (with full circular carry semantics)
+		//
+		// Enables creation of equally spaced parallel streams with any desired spacing
+		// up to 2^512 - 1. Useful for massive-scale reproducible parallelism.
+		//
+		// Note: Much slower than discard() — use only for stream initialization/splitting.
+		//
+		// Conceptually, this would allow someone to create 2^256 independent streams of
+		// non-overlapping length 2^256 blocks each. Why anyone would need that many streams
+		// is another question . . .
+		void big_jump(const uint64_t step[8]) noexcept {
+			uint64_t temp[8];
+			std::memcpy(temp, state, sizeof(temp));  // start from current state
+
+			for (int i = 0; i < 8; ++i) {
+				if (step[i] == 0) continue;
+
+				uint64_t lo, hi;
+				for (int j = 0; j < 8; ++j) {
+					lo = _umul128(inc[j], step[i], &hi);
+					add_circular_carry(temp, lo, (i + j) % 8);
+					if (hi)
+						add_circular_carry(temp, hi, (i + j + 1) % 8);
+				}
+			}
+
+			std::memcpy(state, temp, sizeof(state));
+		}
+
+public:	// Compatibility
 		using result_type = uint64_t;
 
 		// Constants required by the concept
